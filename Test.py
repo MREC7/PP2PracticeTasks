@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
-a = datetime.now()
-b = a - timedelta(days=5)
-print(b)
+import re
+
+a = input()
+esc = re.compile(r'\b\w+\b')
+res = esc.findall(a)
+print(len(res))
