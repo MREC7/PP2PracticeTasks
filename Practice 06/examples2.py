@@ -1,0 +1,25 @@
+import os
+import shutil
+from pathlib import Path
+from functools import reduce
+os.mkdir("dir1")                           
+os.makedirs("dir2/subdir", exist_ok=True)     
+print(os.listdir("."))                       
+os.chdir("dir1")                            
+print(os.getcwd())                        
+os.chdir("..")                            
+os.rmdir("dir1")                          
+Path("example.txt").touch()
+shutil.copy("example.txt", "copy_example.txt")
+print(len([1,2,3,4]))     
+print(sum([1,2,3,4]))    
+print(min([5,2,8]))          
+print(max([5,2,8]))              
+print(list(map(lambda x: x*2, [1,2,3]))) 
+print(list(filter(lambda x: x%2==0, [1,2,3,4]))) 
+print(reduce(lambda a,b: a+b, [1,2,3,4]))  
+print(list(enumerate(['a','b','c'])))       
+print(list(zip([1,2,3], ['a','b','c'])))     
+print(sorted([5,1,4,2]))                      
+print(type(123))                              
+print(int("10"), float("3.14"), str(123))
