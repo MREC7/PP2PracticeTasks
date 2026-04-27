@@ -4,6 +4,7 @@ from db import *
 
 pygame.init()
 
+
 try:
     pygame.mixer.init()
     SOUND_ENABLED = True
@@ -20,6 +21,10 @@ if SOUND_ENABLED:
     except Exception as e:
         print("Sound load error:", e)
         SOUND_ENABLED = False
+
+
+shield_channel = None
+
 
 screen = pygame.display.set_mode((600,400))
 clock = pygame.time.Clock()
@@ -44,6 +49,7 @@ init_db()
 state="menu"
 username=""
 game=None
+
 
 def draw_grid():
     for x in range(0, 600, 20):
@@ -71,6 +77,7 @@ def get_dynamic_color(theme, base):
     if theme == "psychotic":
         return rgb_cycle(pygame.time.get_ticks(), 300)
     return base
+
 
 while True:
     for e in pygame.event.get():
@@ -132,27 +139,49 @@ while True:
 
     screen.fill((0,0,0))
 
+    
     if state=="menu":
         screen.blit(font.render("ENTER - PLAY",True,(255,255,255)),(200,150))
         screen.blit(font.render("L - LEADERBOARD",True,(255,255,255)),(200,180))
         screen.blit(font.render("S - SETTINGS",True,(255,255,255)),(200,210))
 
+    
     elif state=="game":
         if settings["grid"]:
             draw_grid()
 
         prev_head = game.snake[0]
-        prev_food = game.food
-        prev_power = game.power_pos
+        prev_foods = set(game.foods)
+        prev_powers = [p["pos"] for p in game.powers]
 
         alive, mod = game.move()
         new_head = game.snake[0]
 
-        if new_head == prev_food and settings["sound"] and SOUND_ENABLED:
-            sounds["eat"].play()
+        
+        if settings["sound"] and SOUND_ENABLED:
 
-        if new_head == prev_power and settings["sound"] and SOUND_ENABLED:
-            sounds["power"].play()
+            
+            if new_head in prev_foods:
+                sounds["eat"].play()
+
+            
+            if new_head in prev_powers:
+                picked_type = game.active_power
+
+                if picked_type == "shield":
+                    if shield_channel:
+                        shield_channel.stop()
+
+                    shield_channel = pygame.mixer.find_channel()
+                    if shield_channel:
+                        shield_channel.play(sounds["power"], loops=-1)
+                else:
+                    sounds["power"].play()
+
+        
+        if shield_channel and game.active_power != "shield":
+            shield_channel.stop()
+            shield_channel = None
 
         if not alive:
             if settings["sound"] and SOUND_ENABLED:
@@ -163,40 +192,63 @@ while True:
 
         theme = settings["theme"]
 
+        
         for s in game.snake:
             pygame.draw.rect(screen, get_snake_color(theme), (*s,20,20))
 
-        pygame.draw.rect(screen, get_dynamic_color(theme,(255,0,0)), (*game.food,20,20))
+        
+        for food in game.foods:
+            pygame.draw.rect(screen,
+                get_dynamic_color(theme,(255,0,0)),
+                (*food,20,20)
+            )
 
-        pygame.draw.rect(screen, get_dynamic_color(theme,(150,0,0)), (*game.poison,20,20))
+        
+        for poison in game.poisons:
+            pygame.draw.rect(screen,
+                get_dynamic_color(theme,(150,0,0)),
+                (*poison,20,20)
+            )
 
+        
         power_colors = {
             "speed": (0,255,0),
             "slow": (0,0,255),
             "shield": (255,255,0)
         }
-        pygame.draw.rect(screen,
-            get_dynamic_color(theme, power_colors[game.power_type]),
-            (*game.power_pos,20,20)
-        )
 
+        for p in game.powers:
+            pygame.draw.rect(
+                screen,
+                get_dynamic_color(theme, power_colors[p["type"]]),
+                (*p["pos"],20,20)
+            )
+
+        
         for o in game.obstacles:
-            pygame.draw.rect(screen, get_dynamic_color(theme,(100,100,100)), (*o,20,20))
+            pygame.draw.rect(screen,
+                get_dynamic_color(theme,(100,100,100)),
+                (*o,20,20)
+            )
 
+        
         screen.blit(font.render(f"Score: {game.score}",True,(255,255,255)),(10,10))
         screen.blit(font.render(f"Level: {game.level}",True,(255,255,255)),(10,30))
 
         if game.active_power:
             screen.blit(font.render(f"Power: {game.active_power}",True,(0,255,255)),(10,60))
 
+    
     elif state=="game_over":
         screen.blit(font.render("GAME OVER",True,(255,0,0)),(200,150))
         screen.blit(font.render("ENTER - CONTINUE",True,(255,255,255)),(180,200))
 
+    
     elif state=="name_input":
         screen.blit(font.render("ENTER NAME:",True,(255,255,255)),(200,150))
         screen.blit(font.render(username,True,(255,255,0)),(200,180))
 
+    
     elif state=="settings":
         theme = settings["theme"]
 
@@ -214,6 +266,7 @@ while True:
         pygame.draw.rect(screen, (255,255,255), (260, 300, 80, 30), 2)
         pygame.draw.rect(screen, preview_color, (262, 302, 76, 26))
 
+    
     elif state=="leaderboard":
         data = get_top()
         y=100
